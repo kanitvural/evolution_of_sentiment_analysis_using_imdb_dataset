@@ -9,3 +9,6 @@ scikit-learn
 tensorflow
 setuptools
 seaborn
+gensim
+black
+isort
