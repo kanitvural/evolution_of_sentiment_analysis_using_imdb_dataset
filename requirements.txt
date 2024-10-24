@@ -1,0 +1,11 @@
+nltk
+textblob
+wordcloud
+matplotlib
+numpy
+pandas
+Pillow
+scikit-learn
+tensorflow
+setuptools
+seaborn
