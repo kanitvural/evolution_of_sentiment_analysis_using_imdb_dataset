@@ -3,6 +3,7 @@ from typing import Union
 
 import matplotlib.pyplot as plt
 import nltk
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from nltk.corpus import stopwords
@@ -12,6 +13,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import cross_val_score
 from textblob import Word
 from wordcloud import WordCloud
+from gensim.models import Word2Vec
 
 
 # Text Cleaning
@@ -229,6 +231,4 @@ def predict_sentiment(
     new_review = vectorizer.transform(review)
     pred = model.predict(new_review)
     label = "positive" if pred[0] == 1 else "negative"
-    print(f'Review:  \n{review[0]} \n\n Prediction: {label}')
-
-
+    print(f"Review:  \n{review[0]} \n\n Prediction: {label}")
