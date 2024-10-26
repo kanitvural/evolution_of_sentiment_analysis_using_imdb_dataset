@@ -283,12 +283,10 @@ def train_word2vec_and_get_embedding_matrix(
     """
 
     model = Word2Vec(X_train, vector_size=vector_size, window=5, min_count=1, workers=4)
-
-    # Embedding matrisini oluşturma
+    
     embedding_matrix = np.zeros((total_vocabulary_size + 1, vector_size))
 
-    # Tokenizer'dan kelime indekslerini alıp tqdm ile döngüyü güncelleme
-    for word, i in tqdm(tokenizer.word_index.items(), desc="Extracting embedding matrix"):
+    for word, i in tokenizer.word_index.items():
         if word in model.wv:
             embedding_matrix[i] = model.wv[word]
 
@@ -451,10 +449,7 @@ def sentiment_cnn_lstm_att_model(
     x = Bidirectional(LSTM(64, return_sequences=True))(x)
     x = Bidirectional(LSTM(32, return_sequences=False))(x)
     
-    # Dense Layer 
-    x = Dense(32, activation='relu')(x)
-    x = Dropout(0.5)(x)
-  
+ 
     outputs = Dense(1, activation='sigmoid')(x)
     
     model = Model(inputs, outputs)
@@ -496,21 +491,17 @@ def sentiment_cnn_lstm_att_model(
     return result, model
 
 
-
 # Plotting
-def plot_training_history(result: Dict[str, list]) -> None:
+def plot_training_history(result: Tuple[np.ndarray, Model]) -> None:  # Giriş tipi burada değişiyor
     """
     Plots the training and validation loss and accuracy graphs from the model's training history.
 
     Parameters:
     -----------
-    result : Dict[str, list]
-        A dictionary containing the history of the model's training and validation metrics. 
-        It should include at least the following keys:
-        - 'loss': List of training loss values.
-        - 'val_loss': List of validation loss values.
-        - 'accuracy': List of training accuracy values.
-        - 'val_accuracy': List of validation accuracy values.
+    result : Tuple[np.ndarray, Model]
+        A tuple containing:
+            - history: Training history of the model.
+            - model: The trained Keras model instance.
 
     Returns:
     --------
@@ -518,6 +509,7 @@ def plot_training_history(result: Dict[str, list]) -> None:
         This function does not return any value, it just displays the plots.
     """
     
+   
     plt.figure(figsize=(12, 5))
 
     plt.subplot(1, 2, 1)
@@ -538,3 +530,80 @@ def plot_training_history(result: Dict[str, list]) -> None:
 
     plt.tight_layout()
     plt.show()
+    
+# Evaluate   
+def evaluate_model(model, X_test: np.ndarray, y_test: np.ndarray) -> None:
+    
+    """
+    Evaluates the performance of the given model on the training and testing data.
+    
+    Parameters
+    ----------
+    model : keras.Model
+        The trained Keras model to evaluate.
+        
+    X_train : np.ndarray
+        The training input data.
+        
+    y_train : np.ndarray
+        The true labels for the training data.
+        
+    X_test : np.ndarray
+        The testing input data.
+        
+    y_test : np.ndarray
+        The true labels for the testing data.
+        
+    Returns
+    -------
+    None
+    """
+    
+   
+    test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=1)
+    print(f"Test Accuracy: {test_accuracy:.4f} | Loss: {test_loss:.4f}")
+
+    y_pred = model.predict(X_test)
+    y_pred = (y_pred > 0.5).astype(int)
+    
+    cf_matrix = confusion_matrix(y_test, y_pred)
+    
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cf_matrix, annot=True, fmt='g', cmap='Blues')
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+    plt.show()
+
+# Prediction
+    
+def sentiment_cnn_lstm_att_predict(text: str, model: Model, tokenizer: Tokenizer, max_sequence_length: int) -> None:
+    """
+    Predicts the sentiment of a given text using the provided model and tokenizer.
+
+    Parameters
+    ----------
+    text : str
+        The input text for which sentiment prediction is to be made.
+    model : keras.Model
+        The pre-trained Keras model used for making predictions.
+    tokenizer : Tokenizer
+        The tokenizer used to preprocess the input text.
+    max_sequence_length : int
+        The maximum length of the input sequences after padding.
+
+    Returns
+    -------
+    None
+        This function prints the original text and its predicted sentiment.
+
+    """
+    
+    text_clean = clean_text(text)
+    sequences = tokenizer.texts_to_sequences([text_clean])
+    padded_sequences = pad_sequences(sequences, maxlen=max_sequence_length)
+    prediction = model.predict(padded_sequences)
+    prediction = (prediction > 0.5).astype(int)
+    
+    result = "Positive" if prediction == 1 else "Negative"
+    print(f"Review:\n\n{text}\n\n{result}")
