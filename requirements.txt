@@ -6,13 +6,12 @@ numpy
 pandas
 Pillow
 scikit-learn
-#tensorflow[and-cuda]
-tensorflow
+tensorflow[and-cuda]
+tf-keras
 setuptools
 seaborn
 gensim
 black
 isort
 transformers
-torch
 tqdm

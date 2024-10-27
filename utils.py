@@ -19,8 +19,8 @@ from gensim.models import Word2Vec
 import tensorflow as tf
 from keras.src.saving import load_model
 from keras.src.models import Model
-from keras.src.layers import Dense,Input, Embedding,LSTM,Dropout,Conv1D, MaxPooling1D, GlobalMaxPooling1D,Dropout,Bidirectional,Flatten,BatchNormalization,Concatenate, Attention,LayerNormalization, MultiHeadAttention,Add
-from keras.src.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
+from keras.src.layers import Dense,Input, Embedding,LSTM,Dropout,Conv1D, MaxPooling1D, GlobalMaxPooling1D,Dropout,Bidirectional,Flatten,BatchNormalization,Concatenate, Attention,LayerNormalization, MultiHeadAttention,Add, Layer
+from keras.src.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping, History
 from keras.src.optimizers import Adam
 from keras.api.preprocessing.sequence import pad_sequences
 from keras._tf_keras.keras.preprocessing.text import Tokenizer
@@ -338,7 +338,7 @@ def preprocess_sentiment_data(
     return processed_train, processed_test
   
 
-# Modeling
+# Model and training
 
 def self_attention_block(
     inputs: np.ndarray, 
@@ -607,3 +607,98 @@ def sentiment_cnn_lstm_att_predict(text: str, model: Model, tokenizer: Tokenizer
     
     result = "Positive" if prediction == 1 else "Negative"
     print(f"Review:\n\n{text}\n\n{result}")
+    
+ ################################################################################################   
+ 
+# Bert Model
+
+
+
+# Model and training
+
+class CustomDistilBertLayer(Layer):
+    """
+    Custom layer that utilizes a DistilBERT transformer model to extract features.
+
+    This layer takes input IDs and attention masks, processes them through the 
+    DistilBERT transformer, and returns the hidden state corresponding to the 
+    [CLS] token.
+
+    Attributes:
+        transformer: A pre-trained transformer model (e.g., DistilBERT).
+
+    Methods:
+        call(inputs): Processes the input IDs and attention mask through the transformer.
+    """
+
+    def __init__(self, transformer: Model, **kwargs) -> None:
+        """
+        Initializes the CustomDistilBertLayer with a given transformer model.
+
+        Args:
+            transformer (tf.keras.Model): The transformer model to be used.
+            **kwargs: Additional keyword arguments for the parent Layer class.
+        """
+        super(CustomDistilBertLayer, self).__init__(**kwargs)
+        self.transformer = transformer
+
+    def call(self, inputs: Tuple[tf.Tensor, tf.Tensor]) -> tf.Tensor:
+        """
+        Processes the input IDs and attention masks through the transformer.
+
+        Args:
+            inputs (Tuple[tf.Tensor, tf.Tensor]): A tuple containing input IDs 
+                and attention masks.
+
+        Returns:
+            tf.Tensor: The hidden state corresponding to the [CLS] token from 
+                the transformer output.
+        """
+        input_ids, attention_mask = inputs
+        transformer_output = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
+        return transformer_output.last_hidden_state[:, 0, :]
+
+
+def create_and_train_model(train_dataset: tf.data.Dataset, 
+                           val_dataset: tf.data.Dataset, 
+                           max_len: int, 
+                           transformer: Model, 
+                           batch_size: int, 
+                           epochs: int) -> Tuple[History, Model]:
+    """
+    Creates and trains a model using a DistilBERT transformer.
+
+    This function defines a model architecture consisting of a CustomDistilBertLayer, 
+    followed by dense layers, and compiles the model. It then trains the model 
+    on the provided training dataset and validates it on the validation dataset.
+
+    Args:
+        train_dataset (tf.data.Dataset): The dataset for training the model.
+        val_dataset (tf.data.Dataset): The dataset for validating the model.
+        max_len (int): The maximum sequence length for the input tokens.
+        transformer (tf.keras.Model): The pre-trained transformer model to be used.
+        batch_size (int): The number of samples per gradient update.
+        epochs (int): The number of epochs to train the model.
+
+    Returns:
+        Tuple[tf.keras.callbacks.History, tf.keras.Model]: A tuple containing the 
+            training history and the trained model.
+    """
+    input_ids = Input(shape=(max_len,), dtype=tf.int32, name="input_ids")
+    attention_mask = Input(shape=(max_len,), dtype=tf.int32, name="attention_mask")
+    
+    bert_output = CustomDistilBertLayer(transformer)([input_ids, attention_mask])
+    
+    x = Dense(512, activation='relu')(bert_output)
+    x = Dropout(0.1)(x)
+    output = Dense(1, activation='sigmoid')(x)
+    
+    model = Model(inputs=[input_ids, attention_mask], outputs=output)
+    
+    optimizer = Adam(learning_rate=2e-5)
+    
+    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    
+    result = model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, batch_size=batch_size)
+    
+    return result, model
