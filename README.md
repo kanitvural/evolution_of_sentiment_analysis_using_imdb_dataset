@@ -81,7 +81,6 @@ GitHub repository for this project:
 
 To run this project locally, follow these steps:
 
-1. Clone the repository:
    ```bash
    git clone https://github.com/kanitvural/evolution_of_sentiment_analysis_using_imdb_dataset.git
    cd evolution_of_sentiment_analysis_using_imdb_dataset
