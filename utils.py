@@ -19,7 +19,7 @@ from gensim.models import Word2Vec
 import tensorflow as tf
 from keras.src.saving import load_model
 from keras.src.models import Model
-from keras.src.layers import Dense,Input, Embedding,LSTM,Dropout,Conv1D, MaxPooling1D, GlobalMaxPooling1D,Dropout,Bidirectional,Flatten,BatchNormalization,Concatenate, Attention,LayerNormalization, MultiHeadAttention,Add, Layer
+from keras.src.layers import Dense,Input, Embedding,LSTM,Dropout,Conv1D, MaxPooling1D,Dropout,Bidirectional,BatchNormalization,LayerNormalization, MultiHeadAttention,Add, Layer
 from keras.src.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping, History
 from keras.src.optimizers import Adam
 from keras.api.preprocessing.sequence import pad_sequences
@@ -657,9 +657,26 @@ class CustomDistilBertLayer(Layer):
         input_ids, attention_mask = inputs
         transformer_output = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
         return transformer_output.last_hidden_state[:, 0, :]
+    
+    def get_config(self):
+        """
+        Returns the configuration of the custom layer.
+
+        This method is used to serialize the layer, allowing it to be 
+        saved and restored correctly. The configuration includes all the 
+        necessary parameters that define the layer's behavior.
+
+        Returns:
+            dict: A dictionary containing the configuration of the layer.
+        """
+        config = super(CustomDistilBertLayer, self).get_config()
+        config.update({
+            "transformer": self.transformer,  
+        })
+        return config
 
 
-def create_and_train_model(train_dataset: tf.data.Dataset, 
+def create_and_train_bert_model(train_dataset: tf.data.Dataset, 
                            val_dataset: tf.data.Dataset, 
                            max_len: int, 
                            transformer: Model, 
@@ -681,7 +698,7 @@ def create_and_train_model(train_dataset: tf.data.Dataset,
         epochs (int): The number of epochs to train the model.
 
     Returns:
-        Tuple[tf.keras.callbacks.History, tf.keras.Model]: A tuple containing the 
+        Tuple[History, Model]: A tuple containing the 
             training history and the trained model.
     """
     input_ids = Input(shape=(max_len,), dtype=tf.int32, name="input_ids")
@@ -689,16 +706,107 @@ def create_and_train_model(train_dataset: tf.data.Dataset,
     
     bert_output = CustomDistilBertLayer(transformer)([input_ids, attention_mask])
     
-    x = Dense(512, activation='relu')(bert_output)
+    x = Dense(512, activation="relu")(bert_output)
     x = Dropout(0.1)(x)
-    output = Dense(1, activation='sigmoid')(x)
+    output = Dense(1, activation="sigmoid")(x)
     
     model = Model(inputs=[input_ids, attention_mask], outputs=output)
     
-    optimizer = Adam(learning_rate=2e-5)
+    optimizer = Adam(learning_rate=0.001)
     
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss="binary_crossentropy", metrics=["accuracy"])
     
-    result = model.fit(train_dataset, validation_data=val_dataset, epochs=epochs, batch_size=batch_size)
+    checkpoint_callback = ModelCheckpoint(
+        filepath="kaggle/working/bert_model.keras",  
+        monitor="val_loss",
+        save_best_only=True,  
+        save_weights_only=False,
+        mode="min",
+        verbose=1
+    )
+    
+     
+    early_stopping_callback = EarlyStopping(
+        monitor="val_loss",
+        patience=5,  
+        verbose=1
+    )
+
+    lr_callback = ReduceLROnPlateau(
+        monitor="val_loss", 
+        factor=0.3, 
+        patience=3,
+        min_lr=0.000001,
+        verbose=1
+    ) 
+    
+    result = model.fit(train_dataset, 
+                       validation_data=val_dataset,
+                       epochs=epochs,
+                       batch_size=batch_size,
+                       callbacks=[checkpoint_callback, early_stopping_callback, lr_callback])
     
     return result, model
+
+
+# Evaluate
+
+def evaluate_bert(test_dataset: tf.data.Dataset, 
+                  y_test: np.ndarray, 
+                  model: Model) -> None:
+    """
+    Evaluates the BERT model on the given test dataset and displays the results.
+
+    This function calculates the test accuracy, prints the evaluation metrics, 
+    and generates a confusion matrix heatmap to visualize the model's performance.
+
+    Args:
+        test_dataset (tf.data.Dataset): The dataset to evaluate the model on.
+        y_test (np.ndarray): The true labels for the test dataset.
+        model (Model): The Keras model to be evaluated.
+
+    Returns:
+        None
+    """
+    
+    test_loss, test_accuracy = model.evaluate(test_dataset)
+    print(f"Test Accuracy: {test_accuracy:.4f} | Loss: {test_loss:.4f}")
+    
+    y_pred = model.predict(test_dataset)
+    y_pred = (y_pred > 0.5).astype(int)
+
+    cf_matrix = confusion_matrix(y_test, y_pred)
+    sns.heatmap(cf_matrix, annot=True, fmt='g', cmap='Blues')
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+    plt.title('Confusion Matrix')
+    plt.show()
+
+
+# Prediction
+
+def bert_predict(text: str, tokenizer, model: Model, max_len: int) -> str:
+    """
+    Predicts the label for a given input text using the trained BERT model.
+
+    This function preprocesses the input text, generates predictions, and returns
+    the predicted label based on a specified threshold.
+
+    Args:
+        text (str): The input text to classify.
+        tokenizer: The tokenizer used to preprocess the input text.
+        model (Model): The trained Keras model for predictions.
+        max_len (int): The maximum length for input sequences.
+        threshold (float): The threshold for binary classification.
+
+    Returns:
+        str: The predicted label ("Positive" or "Negative").
+    """
+    inputs = tokenizer(text, return_tensors='tf', padding='max_length', max_length=max_len, truncation=True)
+    
+    predictions = model.predict([inputs['input_ids'], inputs['attention_mask']])
+    probability = predictions[0][0]
+
+    predicted_label = "positive" if probability > 0.5 else "negative"
+    
+    print(f"{text}\n\n{predicted_label}")
