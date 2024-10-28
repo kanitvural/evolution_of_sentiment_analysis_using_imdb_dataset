@@ -15,15 +15,14 @@ from textblob import Word
 from wordcloud import WordCloud
 from gensim.models import Word2Vec
 
-
 import tensorflow as tf
-from keras.src.saving import load_model
-from keras.src.models import Model
-from keras.src.layers import Dense,Input, Embedding,LSTM,Dropout,Conv1D, MaxPooling1D,Dropout,Bidirectional,BatchNormalization,LayerNormalization, MultiHeadAttention,Add, Layer
-from keras.src.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping, History
-from keras.src.optimizers import Adam
-from keras.api.preprocessing.sequence import pad_sequences
-from keras._tf_keras.keras.preprocessing.text import Tokenizer
+from keras.saving import register_keras_serializable
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.layers import Dense, Input, Embedding, LSTM, Dropout, Conv1D, MaxPooling1D, Layer,  BatchNormalization, Bidirectional, LayerNormalization, MultiHeadAttention, Add
+from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping, History
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
 
 
 # Text Cleaning
@@ -616,6 +615,7 @@ def sentiment_cnn_lstm_att_predict(text: str, model: Model, tokenizer: Tokenizer
 
 # Model and training
 
+@register_keras_serializable(package="DistilBert", name="DistilBert")
 class CustomDistilBertLayer(Layer):
     """
     Custom layer that utilizes a DistilBERT transformer model to extract features.
@@ -674,6 +674,21 @@ class CustomDistilBertLayer(Layer):
             "transformer": self.transformer,  
         })
         return config
+    
+    @classmethod
+    def from_config(cls, config):
+        """
+        Recreates an instance of the class from its configuration.
+
+        Args:
+            config (dict): A dictionary containing the configuration 
+                           parameters for the custom layer.
+
+        Returns:
+            An instance of the class initialized with the provided config.
+        """
+        return cls(**config)
+
 
 
 def create_and_train_bert_model(train_dataset: tf.data.Dataset, 
@@ -712,12 +727,12 @@ def create_and_train_bert_model(train_dataset: tf.data.Dataset,
     
     model = Model(inputs=[input_ids, attention_mask], outputs=output)
     
-    optimizer = Adam(learning_rate=0.001)
+    optimizer = Adam(learning_rate=2e-5)
     
     model.compile(optimizer=optimizer, loss="binary_crossentropy", metrics=["accuracy"])
     
     checkpoint_callback = ModelCheckpoint(
-        filepath="kaggle/working/bert_model.keras",  
+        filepath="bert_model.keras",  
         monitor="val_loss",
         save_best_only=True,  
         save_weights_only=False,
@@ -736,7 +751,7 @@ def create_and_train_bert_model(train_dataset: tf.data.Dataset,
         monitor="val_loss", 
         factor=0.3, 
         patience=3,
-        min_lr=0.000001,
+        min_lr=2e-7,
         verbose=1
     ) 
     
