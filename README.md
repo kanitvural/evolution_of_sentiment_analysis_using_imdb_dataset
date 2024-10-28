@@ -1,6 +1,6 @@
 # Evolution of Sentiment Analysis Using IMDB Dataset
 
-In the rapidly evolving field of Natural Language Processing (NLP), the ability of machines to understand and interpret human language has progressed from simple rule-based approaches to the complexities of deep learning and AI-driven models. In this project, we explore the evolution of sentiment analysis using IMDB movie reviews, highlighting the advancements in NLP techniques over time while also showcasing the differences in performance between machine learning, deep learning, and transformer-based models.
+In the rapidly evolving field of Natural Language Processing (NLP), the ability of machines to understand and interpret human language has progressed from simple rule-based approaches to the complexities of deep learning and AI-driven models. In this project, the evolution of sentiment analysis using IMDB movie reviews is explored, highlighting the advancements in NLP techniques over time while also showcasing the differences in performance between machine learning, deep learning and transformer-based models.
 
 ## Topics Covered in This Project:
 - Data validation, text analysis, and visualizations
