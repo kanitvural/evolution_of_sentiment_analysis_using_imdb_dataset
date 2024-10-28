@@ -825,3 +825,4 @@ def bert_predict(text: str, tokenizer, model: Model, max_len: int) -> str:
     predicted_label = "positive" if probability > 0.5 else "negative"
     
     print(f"{text}\n\n{predicted_label}")
+    
