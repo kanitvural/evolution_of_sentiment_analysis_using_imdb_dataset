@@ -16,9 +16,9 @@ In the rapidly evolving field of Natural Language Processing (NLP), the ability 
 
 All functions used in this project are well-documented and can be found in the `utils.py` file.
 
-GitHub repository for this project:
+Kaggle Notebook:
 
-[https://github.com/kanitvural/evolution_of_sentiment_analysis_using_imdb_dataset](https://github.com/kanitvural/evolution_of_sentiment_analysis_using_imdb_dataset)
+https://www.kaggle.com/code/iskorpittt/imdb-sentiment-analysis-with-different-methods
 
 ---
 
