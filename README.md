@@ -41,7 +41,7 @@ https://www.kaggle.com/code/iskorpittt/imdb-sentiment-analysis-with-different-me
 
 ### **4. Vectorization**
 
-### **5. Sentiment Modelling**
+### **5. Sentiment Modeling**
 - **5.1 Sentiment Analysis with Machine Learning Models (Logistic Regression, Naive Bayes)**
   - **5.1.1. Bag of Words (BoW)**
   - **5.1.2. Term Frequency-Inverse Document Frequency (TF-IDF)**
